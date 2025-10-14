@@ -3,7 +3,7 @@
 ## Установка одной командой:
 
 ```bash
-$ curl -o install.sh https://raw.githubusercontent.com/abroranvarov01/nextjs-deploy-tool/main/install.sh
+curl -o install.sh https://raw.githubusercontent.com/abroranvarov01/nextjs-deploy-tool/main/install.sh
 ```
 
 ## Или локальная установка:
