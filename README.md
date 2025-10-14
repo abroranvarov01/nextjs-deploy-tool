@@ -3,7 +3,7 @@
 ## Установка одной командой:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/abroranvarov01/nextjs-deploy-tool/main/install.sh | bash
 ```
 
 ## Или локальная установка:
