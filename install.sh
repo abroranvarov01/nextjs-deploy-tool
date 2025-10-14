@@ -7,10 +7,13 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${GREEN}��� Установка NextJS Deploy Tool${NC}"
+echo -e "${GREEN}🚀 Установка NextJS Deploy Tool${NC}"
+echo ""
 
 # Запрос конфигурации
 echo -e "${YELLOW}Введите данные для подключения:${NC}"
+echo ""
+
 read -p "Пользователь сервера (например: ubuntu): " SERVER_USER
 read -p "IP адрес сервера (например: 123.45.67.89): " SERVER_HOST
 read -p "Путь на сервере (например: /var/www/my-app): " SERVER_PATH
@@ -22,11 +25,29 @@ read -p "Git репозиторий (например: git@github.com:user/repo.
 read -p "Git ветка (по умолчанию main): " GIT_BRANCH
 GIT_BRANCH=${GIT_BRANCH:-main}
 
+echo ""
+echo -e "${YELLOW}Проверьте введенные данные:${NC}"
+echo "SERVER_USER: $SERVER_USER"
+echo "SERVER_HOST: $SERVER_HOST"
+echo "SERVER_PATH: $SERVER_PATH"
+echo "APP_NAME: $APP_NAME"
+echo "DOMAIN: $DOMAIN"
+echo "PORT: $PORT"
+echo "GIT_REPO: $GIT_REPO"
+echo "GIT_BRANCH: $GIT_BRANCH"
+echo ""
+
+read -p "Все верно? (y/n): " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    echo -e "${RED}Установка отменена. Запустите скрипт заново.${NC}"
+    exit 1
+fi
+
 # Создание конфигурационного файла
 CONFIG_DIR="$HOME/.nextjs-deploy"
 mkdir -p "$CONFIG_DIR"
 
-cat > "$CONFIG_DIR/config" << EOF
+cat > "$CONFIG_DIR/config" <<EOF
 SERVER_USER="$SERVER_USER"
 SERVER_HOST="$SERVER_HOST"
 SERVER_PATH="$SERVER_PATH"
@@ -37,11 +58,14 @@ GIT_REPO="$GIT_REPO"
 GIT_BRANCH="$GIT_BRANCH"
 EOF
 
+echo ""
+echo -e "${GREEN}✅ Конфигурация сохранена${NC}"
+
 # Создание исполняемого файла
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-cat > "$INSTALL_DIR/nextdeploy" << 'SCRIPT_EOF'
+cat > "$INSTALL_DIR/nextdeploy" <<'SCRIPT_EOF'
 #!/bin/bash
 
 # Загрузка конфигурации
@@ -61,8 +85,9 @@ NC='\033[0m'
 # Проверка аргументов
 case "$1" in
     setup)
-        echo -e "${GREEN}��� Настройка сервера...${NC}"
-        ssh $SERVER_USER@$SERVER_HOST << 'ENDSSH'
+        echo -e "${GREEN}🔧 Настройка сервера...${NC}"
+        ssh $SERVER_USER@$SERVER_HOST 'bash -s' <<'ENDSSH'
+set -e
 sudo apt update && sudo apt upgrade -y
 
 if ! command -v node &> /dev/null; then
@@ -93,14 +118,14 @@ ENDSSH
         ;;
         
     git-setup)
-        echo -e "${GREEN}��� Настройка Git...${NC}"
-        ssh $SERVER_USER@$SERVER_HOST << 'ENDSSH'
+        echo -e "${GREEN}🔑 Настройка Git...${NC}"
+        ssh $SERVER_USER@$SERVER_HOST 'bash -s' <<'ENDSSH'
 if [ ! -f ~/.ssh/id_ed25519 ]; then
     ssh-keygen -t ed25519 -C "server-deploy-key" -f ~/.ssh/id_ed25519 -N ""
 fi
 
 echo ""
-echo "��� Добавьте этот ключ в GitHub/GitLab:"
+echo "📋 Добавьте этот ключ в GitHub/GitLab:"
 cat ~/.ssh/id_ed25519.pub
 echo ""
 
@@ -110,9 +135,9 @@ ENDSSH
         ;;
         
     deploy|"")
-        echo -e "${GREEN}��� Деплой приложения...${NC}"
+        echo -e "${GREEN}🚀 Деплой приложения...${NC}"
         
-        ssh $SERVER_USER@$SERVER_HOST << ENDSSH
+        ssh $SERVER_USER@$SERVER_HOST "bash -s" <<ENDSSH
 set -e
 
 if [ -d "$SERVER_PATH" ]; then
@@ -123,18 +148,18 @@ if [ -d "$SERVER_PATH" ]; then
     git pull origin $GIT_BRANCH
 else
     sudo mkdir -p \$(dirname $SERVER_PATH)
-    sudo chown -R \\\$USER:\\\$USER \$(dirname $SERVER_PATH)
+    sudo chown -R \$USER:\$USER \$(dirname $SERVER_PATH)
     git clone -b $GIT_BRANCH $GIT_REPO $SERVER_PATH
     cd $SERVER_PATH
 fi
 
-echo "��� Установка зависимостей..."
+echo "📦 Установка зависимостей..."
 npm install --force
 
-echo "��� Сборка проекта..."
+echo "🔨 Сборка проекта..."
 npm run build
 
-echo "��� Перезапуск PM2..."
+echo "🔄 Перезапуск PM2..."
 if pm2 list | grep -q "$APP_NAME"; then
     pm2 restart $APP_NAME
 else
@@ -143,8 +168,8 @@ else
 fi
 
 if [ ! -f /etc/nginx/sites-available/$APP_NAME ]; then
-    echo "��� Настройка Nginx..."
-    sudo tee /etc/nginx/sites-available/$APP_NAME > /dev/null << 'NGINX_EOF'
+    echo "🌐 Настройка Nginx..."
+    sudo tee /etc/nginx/sites-available/$APP_NAME > /dev/null <<'NGINX_EOF'
 server {
     listen 80;
     server_name $DOMAIN;
@@ -155,15 +180,15 @@ server {
         proxy_pass http://localhost:$PORT;
         proxy_http_version 1.1;
         
-        proxy_set_header Upgrade \\\$http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \\\$host;
-        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\\$scheme;
-        proxy_cache_bypass \\\$http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
         
-        proxy_set_header X-Real-IP \\\$remote_addr;
-        proxy_set_header X-Forwarded-Host \\\$server_name;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-Host \$server_name;
         
         proxy_buffering off;
         proxy_redirect off;
@@ -176,11 +201,11 @@ server {
     location /_next/static {
         proxy_pass http://localhost:$PORT;
         proxy_cache_valid 200 60m;
-        proxy_cache_bypass \\\$http_cache_control;
+        proxy_cache_bypass \$http_cache_control;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
-    location ~* \.(ico|css|js|gif|jpeg|jpg|png|woff|woff2|ttf|svg|eot)\\\$ {
+    location ~* \.(ico|css|js|gif|jpeg|jpg|png|woff|woff2|ttf|svg|eot)$ {
         proxy_pass http://localhost:$PORT;
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -191,11 +216,11 @@ NGINX_EOF
     sudo ln -s /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
     sudo nginx -t && sudo systemctl reload nginx
     
-    echo "��� Установка SSL..."
+    echo "🔒 Установка SSL..."
     sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || true
 fi
 
-echo -e "${GREEN}✅ Деплой завершен!${NC}"
+echo "✅ Деплой завершен!"
 pm2 status $APP_NAME
 ENDSSH
         ;;
@@ -209,7 +234,7 @@ ENDSSH
         ;;
         
     restart)
-        echo -e "${YELLOW}��� Перезапуск...${NC}"
+        echo -e "${YELLOW}🔄 Перезапуск...${NC}"
         ssh $SERVER_USER@$SERVER_HOST "pm2 restart $APP_NAME"
         echo -e "${GREEN}✅ Перезапущено!${NC}"
         ;;
@@ -229,8 +254,13 @@ ENDSSH
         ;;
         
     config)
-        echo -e "${YELLOW}��� Текущая конфигурация:${NC}"
+        echo -e "${YELLOW}📝 Текущая конфигурация:${NC}"
         cat "$CONFIG_FILE"
+        ;;
+        
+    reinstall)
+        echo -e "${YELLOW}🔄 Переустановка конфигурации...${NC}"
+        curl -fsSL https://raw.githubusercontent.com/abroranvarov01/nextjs-deploy-tool/main/install.sh | bash
         ;;
         
     *)
@@ -249,6 +279,7 @@ ENDSSH
         echo "  start           Запустить приложение"
         echo "  ssh             Подключиться к серверу"
         echo "  config          Показать конфигурацию"
+        echo "  reinstall       Переустановить конфигурацию"
         echo ""
         echo "Примеры:"
         echo "  nextdeploy              # деплой"
@@ -260,24 +291,32 @@ SCRIPT_EOF
 
 chmod +x "$INSTALL_DIR/nextdeploy"
 
+echo -e "${GREEN}✅ Команда nextdeploy создана${NC}"
+
 # Добавление в PATH если нужно
+SHELL_RC=""
+if [ -n "$BASH_VERSION" ]; then
+    SHELL_RC="$HOME/.bashrc"
+elif [ -n "$ZSH_VERSION" ]; then
+    SHELL_RC="$HOME/.zshrc"
+else
+    SHELL_RC="$HOME/.profile"
+fi
+
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo "" >> ~/.bashrc
-    echo "# NextJS Deploy Tool" >> ~/.bashrc
-    echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> ~/.bashrc
-    
-    if [ -f ~/.zshrc ]; then
-        echo "" >> ~/.zshrc
-        echo "# NextJS Deploy Tool" >> ~/.zshrc
-        echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> ~/.zshrc
-    fi
+    echo "" >> "$SHELL_RC"
+    echo "# NextJS Deploy Tool" >> "$SHELL_RC"
+    echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> "$SHELL_RC"
+    echo -e "${GREEN}✅ PATH обновлен в $SHELL_RC${NC}"
 fi
 
 echo ""
 echo -e "${GREEN}✅ Установка завершена!${NC}"
 echo ""
-echo -e "${YELLOW}Перезапустите терминал или выполните:${NC}"
-echo "source ~/.bashrc"
+echo -e "${YELLOW}Выполните для применения изменений:${NC}"
+echo "source $SHELL_RC"
+echo ""
+echo -e "${GREEN}Или просто перезапустите терминал${NC}"
 echo ""
 echo -e "${YELLOW}Теперь доступны команды:${NC}"
 echo "  nextdeploy setup      # первая настройка сервера"
