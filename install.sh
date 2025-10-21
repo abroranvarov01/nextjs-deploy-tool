@@ -88,27 +88,39 @@ case "$1" in
         echo -e "${GREEN}🔧 Настройка сервера...${NC}"
         ssh $SERVER_USER@$SERVER_HOST 'bash -s' <<'ENDSSH'
 set -e
-sudo apt update && sudo apt upgrade -y
 
+# Настройка неинтерактивного режима для apt
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+
+# Обновление системы без интерактивных запросов
+sudo DEBIAN_FRONTEND=noninteractive apt update
+sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+
+# Установка Node.js
 if ! command -v node &> /dev/null; then
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 fi
 
+# Установка PM2
 if ! command -v pm2 &> /dev/null; then
     sudo npm install -g pm2
 fi
 
+# Установка Nginx
 if ! command -v nginx &> /dev/null; then
-    sudo apt install -y nginx
+    sudo DEBIAN_FRONTEND=noninteractive apt install -y nginx
     sudo systemctl enable nginx
     sudo systemctl start nginx
 fi
 
+# Установка Certbot
 if ! command -v certbot &> /dev/null; then
-    sudo apt install -y certbot python3-certbot-nginx
+    sudo DEBIAN_FRONTEND=noninteractive apt install -y certbot python3-certbot-nginx
 fi
 
+# Настройка firewall
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
