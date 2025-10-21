@@ -106,6 +106,8 @@ fi
 # Установка PM2
 if ! command -v pm2 &> /dev/null; then
     sudo npm install -g pm2
+    pm2 startup systemd -u $USER --hp $HOME
+    sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp $HOME
 fi
 
 # Установка Nginx
@@ -176,8 +178,8 @@ if pm2 list | grep -q "$APP_NAME"; then
     pm2 restart $APP_NAME
 else
     pm2 start npm --name "$APP_NAME" -- start
-    pm2 save
 fi
+pm2 save
 
 if [ ! -f /etc/nginx/sites-available/$APP_NAME ]; then
     echo "🌐 Настройка Nginx..."
